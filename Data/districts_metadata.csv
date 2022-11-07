@@ -1,0 +1,29 @@
+id,district,name,latitude,longitude,travel_time_minutes_to_central
+1,D1,D1 - Boat Quay / Raffles Place / Marina,1.281631847,103.8572479,16
+2,D2,D2 - Chinatown / Tanjong Pagar,1.272166563,103.8427803,17
+3,D3,D3 - Alexandra / Commonwealth,1.286188716,103.8177723,17
+4,D4,D4 - Sentosa / Harbourfront,1.27128209,103.8170219,38
+5,D5,D5 - Buona Vista / West Coast / Clementi New Town,1.295909499,103.777698,39
+6,D6,D6 - City Hall / Clarke Quay,1.29257734,103.8491937,13
+7,D7,D7 - Beach Road / Bugis / Rochor,1.300594582,103.8582918,14
+8,D8,D8 - Farrer Park / Serangoon Rd,1.310853081,103.8544335,19
+9,D9,D9 - Orchard / River Valley,1.302264346,103.8392342,16
+10,D10,D10 - Tanglin / Holland / Bukit Timah,1.313139494,103.8069783,30
+11,D11,D11 - Newton / Novena,1.333708457,103.8194332,35
+12,D12,D12 - Balestier / Toa Payoh,1.327012794,103.8573667,35
+13,D13,D13 - Macpherson / Potong Pasir,1.334289217,103.8740794,36
+14,D14,D14 - Eunos / Geylang / Paya Lebar,1.324518011,103.8995999,29
+15,D15,D15 - East Coast / Marine Parade,1.3032394,103.8993176,26
+16,D16,D16 - Bedok / Upper East Coast,1.325950728,103.9468069,29
+17,D17,D17 - Changi Airport / Changi Village,1.348583293,103.9982374,39
+18,D18,D18 - Pasir Ris / Tampines,1.364046498,103.9421062,40
+19,D19,D19 - Hougang / Punggol / Sengkang,1.376567473,103.8967453,40
+20,D20,D20 - Ang Mo Kio / Bishan / Thomson,1.364014808,103.8350225,37
+21,D21,D21 - Clementi Park / Upper Bukit Timah,1.345982052,103.7812877,48
+22,D22,D22 - Boon Lay / Jurong / Tuas,1.334010635,103.6948448,45
+23,D23,D23 - Dairy Farm / Bukit Panjang / Choa Chu Kang,1.373601645,103.7593991,61
+24,D24,D24 - Lim Chu Kang / Tengah,1.401837552,103.7016781,69
+25,D25,D25 - Admiralty / Woodlands,1.421165105,103.7691104,73
+26,D26,D26 - Mandai / Upper Thomson,1.396475616,103.8186707,43
+27,D27,D27 - Sembawang / Yishun,1.435320861,103.8373527,46
+28,D28,D28 - Seletar / Yio Chu Kang,1.407047867,103.8684555,63

@@ -1,0 +1,56 @@
+---
+title: <font size="6"> About Project</font> 
+author: 
+output:
+  html_document:
+    theme: flatly
+    highlight: pygments
+    number_sections: false
+    self_contained: true
+    lib_dir: libs
+    fig_caption: true
+    toc: false
+    toc_float: false
+
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+Purchasing a property in Singapore is the largest investment of most buyers’ lifetimes. That decision must be carefully considered – many factors weigh on the value of a property, such as the district of the property, the type of the property, and the age of the development. In addition, many investors intend to rent their house out as a form of passive income, or to cover their monthly mortgage payment. Savvy investors will also need to consider the resale value of their properties in the future. 
+
+Investors have these three questions before they decide to invest in a property:
+
+* Which property provides the highest capital appreciation?
+* Which property can I reasonably finance?
+* What are the main factors behind a property's rent and resale value?
+
+Our aim was to aid potential landlords and investors of properties in *Singapore* to **easier analyze and pick properties** that provide the *highest rate of returns*.
+
+This project is a course-work in "DBA3702 Descriptive Analytics with R" created by Liu Qizhang. 
+
+## Features
+
+- **Interactive Map**: Provides a geospatial view of historical property price appreciation across districts
+- **Statistical Analysis**: Allows users to freely create their own visualizations and understand the relationships between property attributes
+- **Find Property**: Helps users locate properties that suit their needs and provides a predicted rent price, enabled by machine learning.
+- **Mortgage Calculator**: Allow users to easily calculate their required monthly payments. They can compare it with the above predicted rent price and make better financing decisions.
+
+## To Do
+
+We aim to achieve the following in future iterations:
+
+* Improve linear modelling accuracy
+* Acquire larger and more descriptive datasets on rent prices to enable better time series analysis
+* Scrape hyperlinks to sales listings and allow user to be redirected from 'Find Property'
+
+## The Code of Project 
+
+The code is written in R using Shiny. 
+
+**Full code** is freely available at: 
+[Github](https://github.com/kelvinvin/propertysensei)
+
+## Disclaimer
+![](disclaimer.jpeg){width=600px}

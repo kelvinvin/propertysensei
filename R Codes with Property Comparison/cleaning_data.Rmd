@@ -1,0 +1,315 @@
+---
+title: "teamproject"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(qdapRegex)
+library(tidyr)
+library(stringr)
+library(purrr)
+library(tidyverse)
+```
+
+
+```{r}
+rent_data <- read.csv("99_co_v2.csv", stringsAsFactor = T)
+sales_data <- read.csv("srx new.csv", stringsAsFactor = T)
+
+show(rent_data)
+```
+```{r rename columns}
+rent_data <- rent_data %>% rename(
+  Address. = address,
+  Bathrooms. = bath,
+  Bedrooms. = bed,
+  Built.Year. = built_year,
+  Developer. = developer,
+  District. = district,
+  Property.Name. = name,
+  PSF. = price.sqft,
+  Property.Type. = property_type,
+  Asking. = rental,
+  Area. = sqft,
+  Tenure. = tenure,
+  Furnish. = furnishing, 
+  Floor. = floor_level
+)
+
+str(rent_data)
+```
+
+```{r}
+library(dplyr)
+non_digits_only_regex <- "[^[:digit:]]"
+
+# Clean Bathrooms and Bedrooms columns
+rent_data$Bathrooms. <- gsub(' Baths', '', rent_data$Bathrooms.)
+rent_data$Bathrooms. <- gsub(' Bath', '', rent_data$Bathrooms.)
+rent_data$Bathrooms. <- gsub('Studio', '1', rent_data$Bathrooms.)
+
+rent_data$Bedrooms. <- gsub(' Beds', '', rent_data$Bedrooms.)
+rent_data$Bedrooms. <- gsub(' Bed', '', rent_data$Bedrooms.)
+rent_data$Bedrooms. <- gsub('Studio', '1', rent_data$Bedrooms.)
+
+rent_data$Bathrooms. <- as.integer(rent_data$Bathrooms.)
+rent_data$Bedrooms. <- as.integer(rent_data$Bedrooms.)
+
+# Remove all blank cells
+rent_data <- rent_data %>%
+   mutate(across(everything(), ~ifelse(.=="", NA, as.character(.))))
+
+# Clean nearest_mrt_name
+rent_data <- rent_data %>% 
+  mutate(nearest_mrt_name = replace(nearest_mrt_name, !grepl("MRT", nearest_mrt_name,  fixed = T), NA))
+
+# Clean neighbourhood
+rent_data <- rent_data %>% 
+  mutate(neighbourhood = replace(neighbourhood, neighbourhood %in% c("None"), NA))
+
+# Clean Tenure.
+rent_data <- rent_data %>% 
+  mutate(Tenure. = replace(Tenure., Tenure. %in% c("-"), NA))
+
+# Clean PSF.
+rent_data$PSF. <- as.character(rent_data$PSF.)
+rent_data$'PSF.' <- parse_number(rent_data$PSF.)
+
+# Clean Asking.
+rent_data$Asking. <- as.character(rent_data$Asking.)
+rent_data$Asking. <- parse_number(rent_data$Asking.)
+
+# Clean Area.
+rent_data$Area. <- as.character(rent_data$Area.)
+rent_data <- rent_data %>%
+  separate(col = Area., into = c("Area.Builtup", "Area.Land"), # Separate PSF into land & built-up
+           remove = F, sep = "(built-up)", fill="right") %>%
+  mutate(Area.Land = str_replace_all(Area.Land, non_digits_only_regex, "")) %>% # Remove non-digits from Area.Land
+  mutate(Area.Builtup = str_replace_all(Area.Builtup, non_digits_only_regex, "")) %>% # Remove non-digits from Area.Builtup
+  mutate(Area.Land = parse_number(Area.Land)) %>% # Convert Area.Land into number datatype
+  mutate(Area.Builtup = parse_number(Area.Builtup)) # Convert Area.Builtup into number datatype
+
+# Clean travel_time columns
+rent_data$travel_time_changi<- as.character(rent_data$travel_time_changi)
+rent_data$travel_time_changi <- parse_number(rent_data$travel_time_changi)
+rent_data$travel_time_orchard<- as.character(rent_data$travel_time_orchard)
+rent_data$travel_time_orchard <- parse_number(rent_data$travel_time_orchard)
+rent_data$travel_time_raffles <- as.character(rent_data$travel_time_raffles)
+rent_data$travel_time_raffles <- parse_number(rent_data$travel_time_raffles)
+
+write.csv(rent_data, "rent_data cleaned.csv")
+```
+
+```{r merge actual rental csvs into one}
+library(dplyr)
+library(readr)
+folder_path <- "Actual Sales Data" #File path to the folder with the *.csv files
+
+setwd(folder_path)
+
+df <- list.files(path=folder_path, full.names=T) %>% 
+  lapply(read_csv) %>% 
+  bind_rows
+df <- df[-1]
+df$`Formatted Date Of Sale` <- format(as.Date(paste0('01-', df$`Date of Sale`), format = "%d-%b-%y"), format = "%Y-%m")
+df <- df %>% filter(`Type of Sale` != "New Sale")
+str(df)
+df <- subset(df, select=-c(`Type of Sale`, `Type of Area`, `Date of Sale`))
+df$Area.Builtup <- round(df$`Area (Sqm)` * 10.764)
+df$PSF. <- round(df$`Unit Price ($psm)` / 10.764)
+df <- df %>% rename(
+  Date. = `Formatted Date Of Sale`,
+  Tenure. = Tenure,
+  District. = `Postal District`,
+  Asking. = `Price ($)`,
+  Floor.Description = `Floor Level`,
+)
+df <- subset(df, select=-c(`No. of Units`, `Nett Price ($)`, `Area (Sqm)`, `Unit Price ($psm)`))
+df$District. <- paste0("D", df$District.)
+write.csv(df, "sales_transactions_private_properties cleaned.csv")
+```
+
+```{r, echo=FALSE, message=F, warning=F}
+library(leaflet)
+library(raster)
+
+adm <- getData('GADM', country='SG', level=0)
+
+popup <- paste0("<strong>Name: </strong>", 
+                        adm$NAME_1)
+
+leaflet() %>% 
+  addTiles() %>% 
+  addPolygons(data=adm, weight = 2, fillColor = "yellow", popup=popup)
+```
+
+```{r Test geojson}
+library(jsonlite)
+library(sf)
+library(rgdal)
+
+file <- "G:\\My Drive\\Year 4 Sem 1\\DBA3702\\Lesson 9 - Shiny App Development\\postal_districts.geojson"
+  
+districts_polygons <- readOGR(file)
+str(districts_polygons@data)
+leaflet(districts_polygons) %>% 
+  addTiles() %>% 
+  setView(lat = 1.3521, lng = 103.8198, zoom = 11) %>%
+  addPolygons(popup = ~(paste0("D", id, "-", name)))
+```
+
+```{r Prep annual avg psf}
+rent_listings <- read.csv("Data/rent_listings_data_cleaned.csv", stringsAsFactors = T)
+sales_listings <- read.csv("Data/sales_listings_data_cleaned.csv", stringsAsFactors = T)
+sales_hdb_history <- read.csv("Data/resale_1990_2022_cleaned_v2.csv", stringsAsFactors = T)
+sales_private_history <- read.csv("Data/sales_transactions_private_properties cleaned.csv")
+returns_flats <- read.csv("Data/returns_flats.csv")
+
+HDB_returns_by_type_district <- sales_hdb_history %>%
+  group_by(district, flat_type, Year) %>%
+  summarize(avg_psf = mean(PSF)) %>%
+  group_by(district, flat_type) %>%
+  mutate(psf_pct_change = (avg_psf - lag(avg_psf))/lag(avg_psf)) %>%
+  group_by(district, flat_type) %>%
+  summarize(avg_annual_appreciation = mean(psf_pct_change, na.rm=T)) %>%
+  mutate(flat_type = case_when ( flat_type == "2-RM" ~ "HDB 2 Rooms",
+                         flat_type == "3-RM" ~ "HDB 3 Rooms",
+                         flat_type == "4-RM" ~ "HDB 4 Rooms",
+                         flat_type == "5-RM" ~ "HDB 5 Rooms",
+                         flat_type == "EXEC" ~ "HDB Executive"
+  ))
+
+HDB_returns_by_type_cross <- crossing(
+    setdiff(
+      paste0("D", seq(1, 28)), 
+      unique(HDB_returns_by_type_district$district)), 
+    returns_flats) %>%
+  filter(X != "return_all_flats" & X != "return_1RM") %>%
+  mutate(X = case_when ( X == "return_2RM" ~ "HDB 2 Rooms",
+                         X == "return_3RM" ~ "HDB 3 Rooms",
+                         X == "return_4RM" ~ "HDB 4 Rooms",
+                         X == "return_5RM" ~ "HDB 5 Rooms",
+                         X == "return_EXEC" ~ "HDB Executive",
+                         X == "return_JUMBO" ~ "HDB Jumbo",
+                         ))
+colnames(HDB_returns_by_type_cross) = c("district", "flat_type", "avg_annual_appreciation")
+HDB_returns_by_type_district2 <- rbind(
+  HDB_returns_by_type_district, HDB_returns_by_type_cross
+)
+write.csv(HDB_returns_by_type_district2, "Data/HDB_sales_appreciation.csv")
+
+HDB_avg_psf_annual <- sales_hdb_history %>%
+  group_by(district, flat_type, Year) %>%
+  summarize(avg_psf = mean(PSF)) %>%
+  mutate(flat_type = case_when ( flat_type == "2-RM" ~ "HDB 2 Rooms",
+                         flat_type == "3-RM" ~ "HDB 3 Rooms",
+                         flat_type == "4-RM" ~ "HDB 4 Rooms",
+                         flat_type == "5-RM" ~ "HDB 5 Rooms",
+                         flat_type == "EXEC" ~ "HDB Executive"
+  ))
+
+write.csv(HDB_avg_psf_annual, "Data/HDB_avg_psf_annual.csv")
+
+sales_private_history <- read.csv("Data/sales_transactions_private_properties cleaned.csv")
+process_sales_private_df <- sales_private_history
+process_sales_private_df$Type <- gsub("Strata ", "", process_sales_private_df$Type)
+process_sales_private_df$Type <- gsub("Executive ", "", process_sales_private_df$Type)
+process_sales_private_df$Type <- gsub("Semi-detached", "Semi-Detached", process_sales_private_df$Type)
+
+process_sales_private_df$Type %>% unique()
+process_sales_private_df <- process_sales_private_df %>% filter(!is.na(Date.))
+str(process_sales_private_df)
+
+private_avg_psf_annual <- process_sales_private_df %>%
+  group_by(District., Type, Date.) %>% 
+  summarize(avg_psf = mean(PSF.), observations = n()) %>%
+  mutate(within_second_half = ifelse(Date. %in% c("2021-10", "2021-11", "2021-12"
+                                                 , "2022-01", "2022-02", "2022-03"), F, T))
+private_avg_psf_annual <- private_avg_psf_annual %>% rename(
+  Property.Type. = Type
+)
+write.csv(private_avg_psf_annual, "Data/private_avg_psf_annual.csv")
+
+private_avg_appreciation_district_property_type <- private_avg_psf_annual %>%
+  group_by(District., Property.Type., within_second_half) %>%
+  summarize(observations = sum(observations), avg_psf = mean(avg_psf)) %>%
+  filter(observations >= 10) %>%
+  group_by(District., Property.Type.) %>%
+  mutate(psf_pct_change = (avg_psf - lag(avg_psf))/lag(avg_psf)) %>%
+  group_by(District., Property.Type.) %>%
+  summarize(avg_annual_appreciation = sum(psf_pct_change, na.rm=T))
+private_avg_appreciation_district_property_type %>% arrange(avg_annual_appreciation)
+write.csv(private_avg_appreciation_district_property_type, "Data/private_avg_appreciation_district_property_type.csv")
+
+private_avg_appreciation_district <- private_avg_appreciation_district_property_type %>%
+  group_by(District.) %>%
+  summarize(avg_annual_appreciation = mean(avg_annual_appreciation))
+
+write.csv(private_avg_appreciation_district, "Data/private_avg_appreciation_district.csv", row.names = FALSE)
+
+```
+
+    observe({
+        district <-
+            datasetInput() %>%
+            `$`('District.') %>% levels()
+        stillSelected <- isolate(input$district[input$district %in% district])
+        updateSelectizeInput(session, "district", choices = c("All districts"="", district),
+                             selected = "All districts", server = TRUE)
+    })
+    
+    observe({
+        property_types <- filter(datasetInput(), 
+                                 is.null(input$district) | District. %in% input$district,
+                                 is.null(input$floors) | Floor.Description %in% input$floors) %>%
+            `$`('Property.Type.') %>% 
+            droplevels() %>% levels()   
+        stillSelected <- isolate(input$property_types[input$property_types %in% property_types])
+        updateSelectizeInput(session, "property_types", choices = c("All types"="", property_types),
+                             selected = "All types", server = TRUE)
+    })
+    
+    observe({
+        PSFs <- filter(datasetInput()) %>% pull("PSF.")
+        min_PSF <- min(PSFs)
+        max_PSF <- max(PSFs)
+        if (input$dataset == "Rent Listings"){
+            updateNumericInput(session, "max_PSF", max = max_PSF, value = 50)
+        } else if (input$dataset == "Sales Listings") {
+            updateNumericInput(session, "max_PSF", max = max_PSF, value = 3000)
+        }
+    })
+    
+    observe({
+        floors <- filter(datasetInput(), 
+                         is.null(input$district) | District. %in% input$district,
+                         is.null(input$property_types) | Property.Type. %in% input$property_types) %>%
+            `$`('Floor.Description') %>% 
+            droplevels() %>% levels()   
+        stillSelected <- isolate(input$floors[input$floors %in% floors])
+        updateSelectizeInput(session, "floors", choices = c("All floors"="", floors),
+                             selected = "All floors", server = TRUE)
+    })
+
+
+
+
+            (is.na(input$min_area_builtup)) |
+                Area.Builtup >= input$min_area_builtup,
+            (is.na(input$max_area_builtup)) |
+                Area.Builtup <= input$max_area_builtup,
+            (is.na(input$min_area_land)) |
+                Area.Land >= input$min_area_land,
+            (is.na(input$max_area_land)) |
+                Area.Land <= input$max_area_land,
+            (is.na(input$min_PSF)) |
+                PSF. >= input$min_PSF,
+            (is.na(input$max_PSF)) |
+                PSF. <= input$max_PSF,
+            (is.na(input$min_price)) |
+                Asking. >= input$min_price,
+            (is.na(input$max_price)) |
+                Asking. <= input$max_price,
