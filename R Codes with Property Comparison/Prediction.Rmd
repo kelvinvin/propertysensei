@@ -1,0 +1,161 @@
+---
+title: "Regression analysis"
+author: "nidie"
+date: "2022-11-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(tidyverse)
+library(MASS)
+library(car)
+library(stringr)
+```
+
+
+```{r}
+rent_listings <- read.csv("./data/rent_listings_data_cleaned.csv")
+rent_listings$Property.Name. <- toupper(rent_listings$Property.Name.)
+rent_listings <- unique(rent_listings[c("Property.Name.","Property.Type.","Asking.","Area.","travel_time_changi","travel_time_orchard","travel_time_raffles","District.","Bedrooms.","Bathrooms.","Asking.","Area.Builtup","is_HDB","Built.Year.","PSF.")])
+data_rent <- read.csv("./Data/rent_transactions_private_properties cleaned.csv")
+data_loc <- read.csv("./Data/districts_metadata.csv")
+cte <- left_join(data_rent, data_loc, by = c("Postal.District" = "id"))
+cte <- cte %>% mutate(lower = str_extract(cte$Floor.Area..sq.ft., "^\\d+(?=\\s)")) %>% mutate(upper = str_extract(cte$Floor.Area..sq.ft., "(?<=\\s)\\d+"))
+agg_data <- left_join(cte, rent_listings, by = c("Building.Project.Name" = "Property.Name.")) %>% filter(Area.Builtup >= lower & Area.Builtup <= upper)
+```
+
+
+# Overall analysis
+## Investigating relationship between area of the property and its prices across all types
+```{r}
+# Have a glimpse of the general pattern
+ggplot(rent_listings, aes(x = Area.Builtup, y = Asking., col = Property.Type.)) + geom_point(size = 0.8)
+
+## Detached, Semi-Detached, and Terraces are considerably larger in size and price
+
+# Have a better understanding of common properties
+listing_cleaned <- rent_listings %>% filter(rent_listings$Asking. < 20000 & rent_listings$Area. < 2500)
+ggplot(data = listing_cleaned, aes(x = Area.Builtup, y = Asking., col = Property.Type.)) + geom_point(size = 0.8)
+
+# HDBs - Smaller in size and better in price
+# Apartment, Condominium, Terrace and Semi-detached needs deserves more analysis
+```
+
+## Distance from the central
+```{r}
+ggplot(agg_data, aes(x=travel_time_minutes_to_central, y=Monthly.Gross.Rent...)) + geom_point(size = 0.8) + geom_smooth(method = "lm")
+```
+
+## Multivariate regression
+### Spliting training and validating use data
+```{r}
+agg_data_cleaned <- agg_data %>% filter(!is.na(is_HDB))
+agg_data_cleaned$is_HDB <- case_when(agg_data_cleaned$is_HDB == "No" ~ 0, TRUE ~ 1)
+total <- c(1:nrow(agg_data_cleaned))
+tindex <- sample(total, as.integer(length(total)*0.75))
+training <- agg_data_cleaned[tindex,]
+vindex <- total[is.na(pmatch(total, tindex))]
+validator <- agg_data_cleaned[vindex,]
+```
+
+### Deriving regression formula
+```{r}
+lmRent <- lm(PSF.~travel_time_minutes_to_central + travel_time_orchard + travel_time_raffles + Bathrooms. + Bedrooms. + Built.Year. + Area.Builtup + is_HDB, data = agg_data_cleaned)
+summary(lmRent)
+```
+
+### Refining regressors with stepAIC
+```{r}
+stepRent <- stepAIC(lmRent, direction = "both")
+summary(stepRent)
+vif(stepRent)
+```
+
+### Predicting and validating regression result
+```{r}
+predictRent <- predict(stepRent, validator)
+validator$prediction <- predictRent
+ggplot(validator, aes(x=PSF., y=prediction)) + geom_point() + xlab("Actual Monthly Rent") + ylab("Predicted Rent") + geom_smooth(method = "lm")
+```
+
+
+## Apartment and Condominium comparison
+```{r}
+listing_C_A <- listing_cleaned %>% filter(listing_cleaned$Property.Type. %in% c("Condominium", "Apartment") & listing_cleaned$Area.Builtup >= 300)
+
+ggplot(listing_C_A, aes(x = Area.Builtup, y = Asking., col = Property.Type.)) + geom_point(size = 0.8) + geom_smooth(method = "lm")
+
+
+# Apartment and Condominium have almost identical pattern
+```
+
+## Detached, Semi-detached, and Terrace comparison
+```{r}
+# excluding outliers for the sake of LSA #3
+listing_D_S_T <- rent_listings %>% filter(rent_listings$Property.Type. %in% c("Detached", "Semi-Detached", "Terrace") & rent_listings$Asking. <= 100000)
+
+ggplot(listing_D_S_T, aes(x = Area.Builtup, y = Asking., col = Property.Type.)) + geom_point(size = 0.8) + geom_smooth(method = "lm")
+
+# Almost Equally influenced by Property Area holding other variables constant
+```
+
+## Non-landed properties breakdown
+### Non-landed properties near Changi
+```{r}
+# To better investigate other variables' influences we need multi-regressor regression
+aptm <- agg_data_cleaned %>% filter(Type == "Executive HDB" | Type == "Non-landed Properties") %>% dplyr::select(District., PSF., Built.Year., Area.Builtup, travel_time_changi, travel_time_orchard, travel_time_raffles, Bathrooms., Bedrooms.)
+
+aptm$District. <- as.integer(str_extract(aptm$District., "\\d+"))
+
+# Near Changi
+aptm_changi <- aptm %>% filter(District. >= 14 & District. <= 19) %>% dplyr::select(PSF., Built.Year., Area.Builtup, travel_time_changi, Bathrooms., Bedrooms.)
+
+mod_changi <- lm(PSF. ~ Built.Year. + Area.Builtup + travel_time_changi + Bathrooms. + Bedrooms., method = "lm", data = aptm_changi)
+summary(mod_changi)
+
+stepChangi <- stepAIC(mod_changi, direction = "both")
+summary(stepChangi)
+vif(stepChangi)
+
+## With an adjusted R squared of 0.9716, we are confident that the estimate does fit the dataset
+## We can clearly see a very strong beta1 estimate in built year and area, which denotes that for apartments that are 1 year newer, it is 5.06 more expensive. For each additional sqft there is an increase in price of 4.64. We can also observe a negative correlation between travel time to Changi Airport and the rent price, which makes sense by common understanding.
+```
+
+### Non-landed properties near Orchards and Raffles
+```{r}
+# Near Orchard
+aptm_orchard <- aptm %>% filter(District. >= 1 & District. <= 13) %>% dplyr::select(PSF., Built.Year., Area.Builtup, travel_time_orchard, Bedrooms., Bathrooms.)
+
+## Variables show no clear correlations except the dependent variable Asking.. We are safe to continue our regression
+
+mod_orchard <- lm(PSF. ~ Built.Year. + Area.Builtup + travel_time_orchard + Bedrooms. + Bathrooms., method = "lm", data = aptm_orchard)
+summary(mod_orchard)
+
+stepOrchard <- stepAIC(mod_orchard, direction = "both")
+summary(stepOrchard)
+vif(stepOrchard)
+
+## We see an even stronger relationship between Area.Builtup and the rent price in regions near Orchards.
+```
+
+### Apartments near Raffles
+```{r}
+# Near Orchard
+aptm_raffles <- aptm %>% filter(District. >= 20) %>% dplyr::select(PSF., Built.Year., Area.Builtup, travel_time_raffles, Bathrooms., Bedrooms.)
+
+
+## Variables show no clear correlations except the dependent variable Asking.. We are safe to continue our regression
+
+mod_raffles <- lm(PSF. ~ Built.Year. + Area.Builtup + travel_time_raffles + Bathrooms. + Bedrooms., method = "lm", data = aptm_raffles)
+summary(mod_raffles)
+
+stepRaffles <- stepAIC(mod_raffles, direction = "both")
+summary(stepRaffles)
+vif(stepRaffles)
+
+## Raffles are not that heavily influenced by builtup area and built year compared to other regions near Orchards and Changi
+```
