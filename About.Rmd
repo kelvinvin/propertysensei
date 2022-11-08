@@ -34,7 +34,7 @@ This project is a course-work in "DBA3702 Descriptive Analytics with R" created 
 
 - **Interactive Map**: Provides a geospatial view of historical property price appreciation across districts
 - **Statistical Analysis**: Allows users to freely create their own visualizations and understand the relationships between property attributes
-- **Find Property**: Helps users locate properties that suit their needs and provides a predicted rent price, enabled by machine learning.
+- **Find Property**: Helps users locate properties that suit their needs and provides a predicted rent price, enabled by machine learning. To see more details regarding the derivation of our model, please refer to the second-to-last section "About the model".
 - **Mortgage Calculator**: Allow users to easily calculate their required monthly payments. They can compare it with the above predicted rent price and make better financing decisions.
 
 ## To Do
@@ -51,6 +51,9 @@ The code is written in R using Shiny.
 
 **Full code** is freely available at: 
 [Github](https://github.com/kelvinvin/propertysensei)
+
+## About the model
+We used the rental prices in Singapore to construct our training, testing, and validation model. Our logic is to identify how the metrics we included in our "Find Property" actually relates and effects the per square feet rental price. We conducted time series OLS to derive the general model that fits all data collected from all regions in Singapore, and based on loss functions we further refined the prediction models specifically for districts near Changi, Orchard, and Raffles as we noticed a number of outlying data in those regions. For our codes please find in the Github repo noted above.
 
 ## Disclaimer
 ![](disclaimer.jpeg){width=600px}
