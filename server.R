@@ -15,7 +15,7 @@ shinyServer(function(input, output, session) {
     
     getRentPrediction <- function(built_year, area_builtup, bathroom, bedroom, is_HDB) {
         values <- c(1, built_year, area_builtup, bathroom, bedroom, is_HDB)
-        coefficients <- c(-0.0003346, 0.1832, 1.422, 0.03164, 0.04086, -0.05392)
+        coefficients <- c(-0.01373, 0.07329, -0.000464, -0.4887, 0.1542, -1.077)
         return (sum(values * coefficients, na.rm = TRUE))
     }
     
