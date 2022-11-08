@@ -77,7 +77,8 @@ mortgage_calculator <- fluidPage(
     
     # Sidebar to demonstrate various slider options ----
     sidebarPanel(
-      
+      h4("Calculate amortization for a annuity loan with monthly compounding:"),
+      hr(),
       # Input: Simple integer interval ----
       numericInput("principal", "Principal (loan amount)", 200000, min = 0, step = 1000),
       hr(),
@@ -116,7 +117,9 @@ trends <- fluidPage(
              selectInput("xvar", "X-axis variable", common_axis_vars, selected = "Built.Year."),
              selectInput("color", "Color variable", common_axis_vars, selected = "District."),
              selectInput("size", "Size variable", common_axis_vars, selected = "Area.Builtup"),
-             checkboxInput("rotate", "Rotate axes")
+             checkboxInput("rotate", "Rotate axes"),
+             checkboxInput("log_x_axis", "Log x axis (only for prices)"),
+             checkboxInput("log_y_axis", "Log y axis (only for prices)")
          ),
          wellPanel(
              h4("Filter"),

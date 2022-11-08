@@ -361,10 +361,21 @@ shinyServer(function(input, output, session) {
         
         # If axis is a currency, add dollar sign
         if (input$xvar %in% currency_format_axes) {
-            plot <- plot + scale_x_continuous(labels=scales::dollar_format())
+            if (input$log_x_axis) {
+                plot <- plot + scale_x_continuous(trans="log10", labels=scales::dollar_format())
+                plot <- plot + xlab(paste0("log10(", input$xvar, ")"))
+            } else {
+                plot <- plot + scale_x_continuous(labels=scales::dollar_format())
+            }
         }
+        
         if (input$yvar %in% currency_format_axes) {
-            plot <- plot + scale_y_continuous(labels=scales::dollar_format())
+            if (input$log_y_axis) {
+                plot <- plot + scale_y_continuous(trans="log10", labels=scales::dollar_format())
+                plot <- plot + ylab(paste0("log10(", input$yvar, ")"))
+            } else {
+                plot <- plot + scale_y_continuous(labels=scales::dollar_format())
+            }        
         }
         
         # Rotate x axis text slightly if there's alot of x axis ticks
@@ -447,6 +458,8 @@ shinyServer(function(input, output, session) {
             "Principal (loan amount): ", format(round(input$principal, 2), big.mark = ","),
             "<br>",
             "Annual interest rate: ", input$interest, "%",
+            "<br>",
+            "Effective annual rate: ", format(round(((1 + (input$interest / 1200)) ^ 12 -1) * 100, digits = 2)), "%",
             "<br>",
             "Term: ", input$length, " years (", input$length * 12, " months)",
             "<br>",
