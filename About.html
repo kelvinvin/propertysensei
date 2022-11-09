@@ -175,7 +175,7 @@ pre code {
 <ul>
 <li><strong>Interactive Map</strong>: Provides a geospatial view of historical property price appreciation across districts</li>
 <li><strong>Statistical Analysis</strong>: Allows users to freely create their own visualizations and understand the relationships between property attributes</li>
-<li><strong>Find Property</strong>: Helps users locate properties that suit their needs and provides a predicted rent price, enabled by machine learning.</li>
+<li><strong>Find Property</strong>: Helps users locate properties that suit their needs and provides a predicted rent price, enabled by machine learning. To see more details regarding the derivation of our model, please refer to the second-to-last section “About the model”.</li>
 <li><strong>Mortgage Calculator</strong>: Allow users to easily calculate their required monthly payments. They can compare it with the above predicted rent price and make better financing decisions.</li>
 </ul>
 </div>
@@ -192,6 +192,10 @@ pre code {
 <h2>The Code of Project</h2>
 <p>The code is written in R using Shiny.</p>
 <p><strong>Full code</strong> is freely available at: <a href="https://github.com/kelvinvin/propertysensei">Github</a></p>
+</div>
+<div id="about-the-model" class="section level2">
+<h2>About the model</h2>
+<p>We used the rental prices in Singapore to construct our training, testing, and validation model. Our logic is to identify how the metrics we included in our “Find Property” actually relates and effects the per square feet rental price. We conducted time series OLS to derive the general model that fits all data collected from all regions in Singapore, and based on loss functions we further refined the prediction models specifically for districts near Changi, Orchard, and Raffles as we noticed a number of outlying data in those regions. For our codes please find in the Github repo noted above.</p>
 </div>
 <div id="disclaimer" class="section level2">
 <h2>Disclaimer</h2>

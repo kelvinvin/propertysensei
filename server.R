@@ -9,7 +9,11 @@ shinyServer(function(input, output, session) {
     addPredictions <- function(sales_df) {
         sales_df %>% 
             rowwise() %>% 
-            mutate (Predicted.Rent. = getRentPrediction(Built.Year., Area.Builtup, Bathrooms., Bedrooms., is_HDB)) %>%
+            mutate (Predicted.PSF.Rent. = getRentPrediction(Built.Year., Area.Builtup, Bathrooms., Bedrooms., is_HDB)) %>%
+            mutate(Predicted.Rent. = Area.Builtup * Predicted.PSF.Rent.) %>%
+            mutate(Months.Breakeven = Asking. / Predicted.Rent.) %>%
+            relocate(Predicted.PSF.Rent., .after = PSF.) %>%
+            relocate(Months.Breakeven, .after = Asking.) %>%
             relocate(Predicted.Rent., .after = Asking.)
     }
     
@@ -368,7 +372,6 @@ shinyServer(function(input, output, session) {
                 plot <- plot + scale_x_continuous(labels=scales::dollar_format())
             }
         }
-        
         if (input$yvar %in% currency_format_axes) {
             if (input$log_y_axis) {
                 plot <- plot + scale_y_continuous(trans="log10", labels=scales::dollar_format())
@@ -488,6 +491,279 @@ shinyServer(function(input, output, session) {
         ) %>%
             formatCurrency(c("Balance", "Payment", "Principal", "Interest"), currency = "", interval = 3, mark = ",")
     })
+    
+    ##  ............................................................................
+    ##  Location comparison                                                     ####
+    
+    ##  ............................................................................
+    ##  Reactive values                                                         ####
+    
+    observeEvent(input$compare, {
+      shinyjs::show("reactiveOutput7a")
+      shinyjs::show("reactiveOutput7b")
+      shinyjs::show("reactiveOutput9")
+      shinyjs::show("reactiveOutput10a")
+      shinyjs::show("reactiveOutput10b")
+    })
+    
+    observeEvent(input$searchAddr1, {
+      shinyjs::hide("reactiveOutput7a")
+      shinyjs::hide("reactiveOutput10a")
+    })
+    
+    observeEvent(input$searchAddr2, {
+      shinyjs::hide("reactiveOutput7b")
+      shinyjs::hide("reactiveOutput10b")
+    })
+    
+    observeEvent(input$searchAddr3, {
+      shinyjs::hide("reactiveOutput10a")
+    })
+    
+    observeEvent(input$searchAddr4, {
+      shinyjs::hide("reactiveOutput10b")
+    })
+    
+    observe({
+      if ((is.null(input$searchAddr1) || input$searchAddr1 == "") ||
+          (is.null(input$searchAddr2) || input$searchAddr2 == "")) {
+        shinyjs::disable("compare")
+        shinyjs::disable("compare2")
+      } else {
+        shinyjs::enable("compare")
+        shinyjs::enable("compare2")
+      }
+    })
+    
+    observe({
+      if ((is.null(input$searchAddr3) || input$searchAddr4 == "") ||
+          (is.null(input$searchAddr4) || input$searchAddr4 == "")) {
+        shinyjs::disable("compare2")
+      } else {
+        shinyjs::enable("compare2")
+      }
+    })
+    
+    map<- function(addr){
+      
+      address_data <- sales_listings[sales_listings$Address. == addr,][1,]
+      address_lon <- as.numeric(address_data$lon)
+      address_lat <- as.numeric(address_data$lat)
+      
+      s_threshold <- 0.01
+      while (nrow(schools[abs(schools$Longitude - address_lon) <= s_threshold & abs(schools$Latitude - address_lat) <= s_threshold, ]) < 1){
+        s_threshold <- s_threshold + 0.005
+      }
+      
+      schools1 <- schools[abs(schools$Longitude - address_lon) <= s_threshold & abs(schools$Latitude - address_lat) <= s_threshold, ]
+      S_duration <- NULL
+      S_distance <- NULL
+      for (i in 1:nrow(schools1)){
+        S_route_summary <- osrmRoute(src=c(address_lon, address_lat),dst=c(schools1[i,"Longitude"], schools1[i,"Latitude"]),overview = FALSE)
+        S_duration <- c(S_duration, S_route_summary[1])
+        S_distance <- c(S_distance, S_route_summary[2])
+      }
+      schools2 <- cbind(schools1,S_distance,S_duration)
+      
+      m_threshold <- 0.01
+      while (nrow(mall[abs(mall$Longitude - address_lon) <= m_threshold & abs(mall$Latitude - address_lat) <= m_threshold, ]) < 1){
+        m_threshold <- m_threshold + 0.005
+      }
+      
+      mall1 <- mall[abs(mall$Longitude - address_lon) <= m_threshold & abs(mall$Latitude - address_lat) <= m_threshold, ]
+      m_duration <- NULL
+      m_distance <- NULL
+      for (i in 1:nrow(mall1)){
+        m_route_summary <- osrmRoute(src=c(address_lon, address_lat), dst=c(mall1[i,"Longitude"], mall1[i,"Latitude"]),overview = FALSE)
+        m_duration <- c(m_duration, m_route_summary[1])
+        m_distance <- c(m_distance, m_route_summary[2])
+      }
+      mall2 <- cbind(mall1,m_distance,m_duration)
+      
+      mrt_threshold <- 0.01
+      while (nrow(mrt[abs(mrt$Longitude - address_lon) <= mrt_threshold & abs(mrt$Latitude - address_lat) <= mrt_threshold, ]) < 1){
+        mrt_threshold <- mrt_threshold + 0.005
+      }
+      
+      mrt1 <- mrt[abs(mrt$Longitude - address_lon) <= mrt_threshold & abs(mrt$Latitude - address_lat) <= mrt_threshold, ]
+      mrt_duration <- NULL
+      mrt_distance <- NULL
+      for (i in 1:nrow(mrt1)){
+        mrt_route_summary <- osrmRoute(src=c(address_lon, address_lat), dst=c(mrt1[i,"Longitude"], mrt1[i,"Latitude"]),overview = FALSE)
+        mrt_duration <- c(mrt_duration, mrt_route_summary[1])
+        mrt_distance <- c(mrt_distance, mrt_route_summary[2])
+      }
+      mrt2 <- cbind(mrt1,mrt_distance,mrt_duration)
+      
+      leaflet() %>% 
+        setView(lat = address_lat, lng = address_lon, zoom = 15) %>% 
+        addTiles() %>% 
+        addMarkers(data=address_data, lng = ~lon, lat = ~lat, popup = address_data$Property.Name.) %>% 
+        addCircleMarkers(data=schools2, lng = ~Longitude, lat = ~Latitude, color = "red",popup = paste(schools2$Name,"-",schools2$S_distance,"KM","-",schools2$S_duration,"Mins"),group = "Schools") %>% 
+        addCircleMarkers(data = mall2, lng = ~Longitude, lat = ~Latitude, color = "blue",popup =  paste(mall2$Name,"-",mall2$m_distance,"KM","-",mall2$m_duration,"Mins"), group = "Malls") %>% 
+        addCircleMarkers(data = mrt2, lng = ~Longitude, lat = ~Latitude, color = "green",popup = paste(mrt2$Name,"-",mrt2$mrt_distance,"KM","-",mrt2$mrt_duration,"Mins"), group = "MRT") %>%
+        addProviderTiles(providers$OpenStreetMap.Mapnik) %>%
+        addDrawToolbar(editOptions=editToolbarOptions(selectedPathOptions=selectedPathOptions())) %>% 
+        addMeasure(primaryLengthUnit="kilometers", secondaryLengthUnit="kilometers") %>%
+        addTiles(group="Default") %>% addProviderTiles("Esri.WorldImagery", group = "Esri") %>% 
+        addLayersControl(baseGroups = c("Default","Esri"), overlayGroups = c("Schools","Malls","MRT"))
+    }
+    
+    location1 <- reactive({
+      str_to_title(input$searchAddr1)
+    })
+    
+    mapLocation1 <- eventReactive(input$compare, {
+      addr <- location1()
+      map(addr)
+    })
+    
+    output$mapLocation1 <- renderLeaflet({
+      mapLocation1()
+    })
+    
+    location2 <- reactive({
+      str_to_title(input$searchAddr2)
+    })
+    
+    mapLocation2 <- eventReactive(input$compare, {
+      addr <- location2()
+      map(addr)
+    })
+    
+    output$mapLocation2 <- renderLeaflet({
+      mapLocation2()
+    })
+    
+    tableComparison <- function(add1,add2){
+  
+      add1_data = t(sales_listings[sales_listings$Address. == add1,cols][1,])
+      add2_data = t(sales_listings[sales_listings$Address. == add2,cols][1,])
+      
+      table1 <- data.frame(add1_data, cols, add2_data )
+      
+      datatable(table1,rownames = FALSE,
+                colnames = c("","Metrics",""),
+                filter = "none",
+                options = list(
+                  paging = FALSE, searching = FALSE,
+                  sort = FALSE, info = FALSE,
+                  columnDefs = list(list(className = 'dt-center', targets = 0:2,
+                                         width = '200px', targets = c(2))))) %>%
+        formatStyle(
+          "cols",
+          backgroundColor = 'gray')
+    }
+    
+    tableOut <- eventReactive(input$compare,{
+      add1 <- location1()
+      add2 <- location2()
+      tableComparison(add1,add2)
+    })
+    
+    output$CTcomparisonTable <- renderDataTable({
+      tableOut()
+    })
+    
+    distancemap<- function(addr1,addr2,t_option){
+      if ( grepl("SCHOOL", addr2,fixed = T)){
+        schools$Name = str_to_upper(schools$Name)
+        data1 = schools
+      } else if (grepl("MRT",addr2,fixed=T)){
+        data1 = mrt
+      } else { data1 = mall}
+      
+      address1_data <- sales_listings[sales_listings$Address. == addr1,][1,]
+      address2_data <- data1[data1$Name == addr2,][1,]
+      address1_lon <- as.numeric(address1_data$lon)
+      address1_lat <- as.numeric(address1_data$lat)
+      address2_lon <- as.numeric(address2_data$Longitude)
+      address2_lat <- as.numeric(address2_data$Latitude)
+      
+      df = data.frame(
+        Name = c(addr1,addr2),
+        lon = c(address1_lon, address2_lon),
+        lat = c(address1_lat, address2_lat)
+      )
+      
+      api_key = "AIzaSyBeXEQcDFrjCHrEISl2cncPr3opKt59paM"
+      
+      res <- google_directions(
+        key = api_key,
+        origin = c(address1_lat,address1_lon),
+        destination = c(address2_lat,address2_lon),
+        mode = t_option
+      )
+      
+      df_polyline <- decode_pl(res$routes$overview_polyline$points)
+      
+      leaflet() %>%
+        addTiles() %>%
+        addPolylines(data=df_polyline, lng = ~lon, lat = ~lat, 
+                     label = paste(res$routes$legs[[1]]$duration[1], ' - ', res$routes$legs[[1]]$distance[1]), 
+                     labelOptions = labelOptions(noHide = TRUE, direction = "top",
+                                                 style = list(
+                                                   "color"="black",
+                                                   "font-family" ="sans-serif",
+                                                   "box-shadow" = "3px 3px rgba(0,0,0,0.25)",
+                                                   "font-size" = "12px",
+                                                   "border-color" = "rgba(0,0,0,0.5)"))) %>% 
+        addCircleMarkers(
+          data = df,
+          popup = df$Name,
+          stroke = FALSE, 
+          label = seq_len(nrow(df)),
+          fillOpacity = 0.8, 
+          labelOptions = labelOptions(
+            direction = "center",
+            style = list('color' = "white"),
+            noHide = TRUE, 
+            offset=c(0,0), 
+            fill = TRUE, 
+            opacity = 1, 
+            weight = 10, 
+            textOnly = TRUE
+          ))
+    }
+    
+    location3 <- reactive({
+      str_to_upper(input$searchAddr3)
+    })
+    
+    t_option1 <- reactive({
+      input$traveling_option1
+    })
+    
+    mapLocation3 <- eventReactive(input$compare2, {
+      addr1 <- location1()
+      addr2 <- location3()
+      t_option <- t_option1()
+      distancemap(addr1,addr2,t_option)
+    })
+    
+    output$mapLocation3 <- renderLeaflet({
+      mapLocation3()
+    })
+    
+    location4 <- reactive({
+      str_to_upper(input$searchAddr4)
+    })
+    
+    t_option2 <- reactive({
+      input$traveling_option2
+    })
+    
+    mapLocation4 <- eventReactive(input$compare2, {
+      addr1 <- location2()
+      addr2 <- location4()
+      t_option <- t_option2()
+      distancemap(addr1,addr2,t_option)
+    })
+    
+    output$mapLocation4 <- renderLeaflet({
+      mapLocation4()
+    })
+    
     
     ################################################
     
