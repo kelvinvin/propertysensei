@@ -34,6 +34,8 @@ hdb_annual_avg_psf <- read.csv("Data/HDB_avg_psf_annual.csv", stringsAsFactors =
 private_annual_avg_psf <- read.csv("Data/private_avg_psf_annual.csv", stringsAsFactors = T)
 hdb_avg_appreciation_district <- read.csv("Data/hdb_avg_appreciation_district.csv")
 districts_metadata <- read.csv("Data/districts_metadata.csv")
+data_rent <- read.csv("./Data/rent_transactions_private_properties cleaned.csv")
+data_loc <- read.csv("./Data/districts_metadata.csv")
 mall <- read.csv("Data/mall_coordinates_updated.csv", stringsAsFactors = T)
 mrt <- read.csv("Data/mrtsg.csv", stringsAsFactors = T)
 schools <- read.csv("Data/primaryschoolsg.csv", stringsAsFactors = T)

@@ -9,7 +9,7 @@ shinyServer(function(input, output, session) {
     addPredictions <- function(sales_df) {
         sales_df %>% 
             rowwise() %>% 
-            mutate (Predicted.PSF.Rent. = getRentPrediction(Built.Year., Area.Builtup, Bathrooms., Bedrooms., is_HDB)) %>%
+            mutate(Predicted.Rent. = getRentPrediction(Built.Year., travel_time_minutes_to_central, travel_time_orchard, travel_time_raffles, Area.Builtup, Bathrooms., Bedrooms., is_HDB)) %>%
             mutate(Predicted.Rent. = Area.Builtup * Predicted.PSF.Rent.) %>%
             mutate(Months.Breakeven = Asking. / Predicted.Rent.) %>%
             relocate(Predicted.PSF.Rent., .after = PSF.) %>%
@@ -17,17 +17,25 @@ shinyServer(function(input, output, session) {
             relocate(Predicted.Rent., .after = Asking.)
     }
     
-    getRentPrediction <- function(built_year, area_builtup, bathroom, bedroom, is_HDB) {
-        values <- c(1, built_year, area_builtup, bathroom, bedroom, is_HDB)
-        coefficients <- c(-0.01373, 0.07329, -0.000464, -0.4887, 0.1542, -1.077)
+    getRentPrediction <- function(built_year, travel_time_minutes_to_central, travel_time_orchard, travel_time_raffles, area_builtup, bathroom, bedroom, is_HDB) {
+        values <- c(1, built_year, travel_time_minutes_to_central, travel_time_orchard, travel_time_raffles, area_builtup, bathroom, bedroom, is_HDB)
+        coefficients <- c(0.001399, -0.0012, -0.05109, -0.004986, -0.02864, 0.04372, 0.0023, 0.01997, -0.9789)
         return (sum(values * coefficients, na.rm = TRUE))
     }
+    
+    rent_listings$Property.Name. <- toupper(rent_listings$Property.Name.)
+    rent_listings <- unique(rent_listings[c("Property.Name.","Property.Type.","Asking.","Area.","travel_time_changi","travel_time_orchard","travel_time_raffles","District.","Bedrooms.","Bathrooms.","Asking.","Area.Builtup","is_HDB","Built.Year.","PSF.")])
+    cte <- left_join(data_rent, data_loc, by = c("Postal.District" = "id"))
+    cte <- cte %>% mutate(lower = str_extract(cte$Floor.Area..sq.ft., "^\\d+(?=\\s)")) %>% mutate(upper = str_extract(cte$Floor.Area..sq.ft., "(?<=\\s)\\d+"))
+    agg_data <- left_join(cte, rent_listings, by = c("Building.Project.Name" = "Property.Name.")) %>% filter(Area.Builtup >= lower & Area.Builtup <= upper)
+    
+    sales_listings <- left_join(sales_listings, agg_data, by = c("District." = "Postal.District"))
     
     sales_listings <- addPredictions(sales_listings)
     
     districts_polygons <- readOGR(districts_geojson)
     
-    #returns <- left_join(hdb_avg_appreciation_district, private_avg_appreciation_district)
+    # returns <- left_join(hdb_avg_appreciation_district, private_avg_appreciation_district)
     # returns$Annual_Avg_Return<- rowMeans(returns[, c(2,3)], na.rm = T)
     districts_polygons@data$id <- paste0("D", districts_polygons@data$id)
     
