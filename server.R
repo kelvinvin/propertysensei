@@ -10,7 +10,7 @@ shinyServer(function(input, output, session) {
         sales_df %>% 
             rowwise() %>% 
             mutate (Predicted.Rent. = getRentPrediction(Built.Year., Area.Builtup, Bathrooms., Bedrooms., is_HDB)) %>%
-            relocate(Predicted.Rent., .after = Asking.)
+            relocate(Predicted.Rent., .after = PSF.)
     }
     
     getRentPrediction <- function(built_year, area_builtup, bathroom, bedroom, is_HDB) {
