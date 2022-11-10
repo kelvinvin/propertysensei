@@ -15,6 +15,14 @@ library(scales)
 library(DT)
 library(leaflet)
 library(RColorBrewer)
+library(leaflet)
+library(shinyjs)
+library(osrm)
+library(leaflet.extras)
+library(tidyverse)
+library(googleway)
+library(fontawesome)
+
 options(scipen = 999)
 
 rent_listings <- read.csv("Data/rent_listings_data_cleaned.csv", stringsAsFactors = T)
@@ -28,6 +36,9 @@ hdb_avg_appreciation_district <- read.csv("Data/hdb_avg_appreciation_district.cs
 districts_metadata <- read.csv("Data/districts_metadata.csv")
 data_rent <- read.csv("./Data/rent_transactions_private_properties cleaned.csv")
 data_loc <- read.csv("./Data/districts_metadata.csv")
+mall <- read.csv("Data/mall_coordinates_updated.csv", stringsAsFactors = T)
+mrt <- read.csv("Data/mrtsg.csv", stringsAsFactors = T)
+schools <- read.csv("Data/primaryschoolsg.csv", stringsAsFactors = T)
 
 # private_avg_appreciation_district <- read.csv("Data/private_avg_appreciation_district.csv")
 common_axis_vars <- c(
@@ -80,4 +91,18 @@ all_private <- "All Private"
 
 all_property_types <- sales_listings$Property.Type. %>% unique()
 all_districts_names <- districts_metadata$name                      
-all_districts_code <- districts_metadata$district                      
+all_districts_code <- districts_metadata$district 
+
+cols <- c("Property.Name.","Property.Type.","Built.Year.","Model.","District.",
+          "Developer.","Tenure.","Facilities")
+
+traveling_option <- c("driving","walking","bicycling","transit")
+
+listOfPackages <- c("RcppEigen","brio","car","carData","desc",
+                    "diffobj","lme4","minqa","nloptr",
+                    "numDeriv","pbkrtest", "pkgload", "praise", "reshape", "rprojroot", "testthat", "waldo")
+for (i in listOfPackages){
+  if(! i %in% installed.packages()){
+    install.packages(i, dependencies = TRUE)
+  }
+}

@@ -77,7 +77,8 @@ mortgage_calculator <- fluidPage(
     
     # Sidebar to demonstrate various slider options ----
     sidebarPanel(
-      
+      h4("Calculate amortization for a annuity loan with monthly compounding:"),
+      hr(),
       # Input: Simple integer interval ----
       numericInput("principal", "Principal (loan amount)", 200000, min = 0, step = 1000),
       hr(),
@@ -116,7 +117,9 @@ trends <- fluidPage(
              selectInput("xvar", "X-axis variable", common_axis_vars, selected = "Built.Year."),
              selectInput("color", "Color variable", common_axis_vars, selected = "District."),
              selectInput("size", "Size variable", common_axis_vars, selected = "Area.Builtup"),
-             checkboxInput("rotate", "Rotate axes")
+             checkboxInput("rotate", "Rotate axes"),
+             checkboxInput("log_x_axis", "Log x axis (only for prices)"),
+             checkboxInput("log_y_axis", "Log y axis (only for prices)")
          ),
          wellPanel(
              h4("Filter"),
@@ -169,15 +172,161 @@ trends <- fluidPage(
   )
 )
 
+#Location Comparison                                                     
+propertyComparison <- function() {
+  
+  sampleLocations <- c("66 Lorong L Telok Kurau (425509)",
+                       "5 Shenton Way (068808)",
+                       "21 Marina Way (018978)",
+                       "1 Dundee Road (149456)",
+                       "1 Lorong 5 Toa Payoh (319458)")
+  
+  sampleLocations <- sample(sampleLocations,2)
+  
+  samplePlaces <- c("River Valley Primary School",
+                    "Cantonment Primary School",
+                    "PENINSULA PLAZA",
+                    "MARINA BAY FINANCIAL CENTRE TOWER 3",
+                    "EUNOS MRT STATION")
+  
+  samplePlace <- sample(samplePlaces,2)
+  
+  tagList(
+    div(class = "container",
+        h1("Property Location Comparison", class = "title fit-h1"),
+        #tags$script(src = "plugins/fittext.js"),
+        p("You have already identified two properties of interest, but cant decide which one to invest in? Let us help make your final decision."),
+        p("Enter the addresses of two properties below and click the button to compare the locations against Primary Schools, MRT and Shopping Malls Nearby!"),
+        p("You may copy and paste sales listing addresses from the Find Property tab."),
+        p("Click on the markers to view the names of the location, and the driving distance and duration!"),
+        p("Feel free to use the toggles to filter the map style and features that you wish to see on the map! You can also draw lines to measure distance and areas!"),
+        p("Please be patient as our maps will take up to 10 seconds to plot to calculate the distance and duration accurately!"),
+        fluidRow(
+          column(4,
+                 div(class = "addrSearch",
+                     textInput("searchAddr1", 
+                               value = sampleLocations[1],
+                               placeholder = "Enter address...",
+                               label = "Enter Address in the format E.g. 1 Lorong 5 Toa Payoh (319458)"),
+                     class = "search")
+          ),
+          column(4, class="text-center", 
+                 disabled(actionButton("compare", width = "75%",
+                                       class = "btn-primary", style = "margin: 20px 0 20px 0;",
+                                       HTML("&laquo; Compare locations &raquo;")))
+          ),
+          column(4,
+                 div(class = "addrSearch",
+                     textInput("searchAddr2", 
+                               value = sampleLocations[2],
+                               placeholder = "Enter address...",
+                               label = "Enter Address in the format E.g. 1 Lorong 5 Toa Payoh (319458)"),
+                     class = "search"
+                 )
+          )
+        ),
+        fluidRow(
+          column(6,
+                 hidden(div(id = "reactiveOutput7a",
+                            leafletOutput("mapLocation1"),
+                            h4(tags$script(src="https://kit.fontawesome.com/811000c4cc.js"),
+                               tags$div(
+                                 tags$i(class = "fa-solid fa-location-dot",style = "color:blue"),
+                                 tags$span("Property"),
+                              icon("circle", style = "color: red"), "Primary Schools",
+                               icon("circle",style="color:blue"),"Shopping Malls",
+                               icon("circle",style="color:green"),"MRT Stations"))
+                 )
+                 ))
+          ,
+          column(6,
+                 hidden(div(id = "reactiveOutput7b",
+                            leafletOutput("mapLocation2"),
+                            h4(tags$script(src="https://kit.fontawesome.com/811000c4cc.js"),
+                               tags$div(
+                                 tags$i(class = "fa-solid fa-location-dot",style = "color:blue"),
+                                 tags$span("Property"),
+                                 icon("circle", style = "color: red"), "Primary Schools",
+                                 icon("circle",style="color:blue"),"Shopping Malls",
+                                 icon("circle",style="color:green"),"MRT Stations"))
+                 )
+                 )
+          )),
+        fluidRow(
+          column(12,
+                 hidden(div(id = "reactiveOutput9", 
+                            style = "margin-top: 30px; font-size: 1.5em;",
+                            hr(),
+                            h3("Property Information Comparison"),
+                            DT::dataTableOutput("CTcomparisonTable"))
+                 ))
+        ),
+        fluidRow(h3("Check Routes, Exact Distance and Traveling Time to Primary Schools, Malls or MRT!")
+        ),
+        fluidRow(
+          column(4,
+                 div(class = "addrSearch",
+                     textInput("searchAddr3", 
+                               value = samplePlaces[1],
+                               placeholder = "Enter Primary School/MRT/Malls",
+                               label = "Enter Primary School/MRT/Malls in the format (E.g.River Valley Primary School/EUNOS MRT STATION/MARINA SQUARE) to find out routes, distance and traveling time!"),
+                     class = "search")
+          ),
+          column(4, class="text-center", 
+                 disabled(actionButton("compare2", width = "75%",
+                                       class = "btn-primary", style = "margin: 20px 0 20px 0;",
+                                       HTML("&laquo; Compare locations &raquo;")))
+          ),
+          column(4,
+                 div(class = "addrSearch",
+                     textInput("searchAddr4", 
+                               value = samplePlaces[2],
+                               placeholder = "Enter Primary School/MRT/Malls",
+                               label = "Enter Primary School/MRT/Malls in the format (E.g.River Valley Primary School/EUNOS MRT STATION/MARINA SQUARE) to find out routes, distance and traveling time!"),
+                     class = "search"
+                 )
+          )
+        ),
+        fluidRow(
+          column(4,
+                 selectInput('traveling_option1', 'Traveling Option', traveling_option, selected = traveling_option[1])
+                 )
+          ,
+          column(4,
+                 ""
+                 )
+          ,
+          column(4,
+                 selectInput('traveling_option2', 'Traveling Option', traveling_option, selected = traveling_option[1])
+          )
+        ),
+        fluidRow(
+          column(6,
+                 hidden(div(id = "reactiveOutput10a",
+                            leafletOutput("mapLocation3")
+                 )
+                 ))
+          ,
+          column(6,
+                 hidden(div(id = "reactiveOutput10b",
+                            leafletOutput("mapLocation4")
+                 )
+                 )
+          )),
+        
+    )
+  )}
+
 about <- fluidPage(htmlOutput("abo"))
     
 sidebar <- dashboardSidebar(
   sidebarMenu(
-    menuItem(tabName = "InteractiveMap","Interactive Map"),
-    menuItem(tabName = "Trends", "Statistical Analysis"),
-    menuItem(tabName = "DataExplorer", "Find Property"),
-    menuItem(tabName = "MortgageCalculator", "Mortgage Calculator"),
-    menuItem(tabName = "About","About")
+    menuItem(tabName = "InteractiveMap","Interactive Map",icon = icon("map")),
+    menuItem(tabName = "Trends", "Statistical Analysis",icon = icon("chart-simple")),
+    menuItem(tabName = "DataExplorer", "Find Property",icon = icon("database")),
+    menuItem(tabName = "MortgageCalculator", "Mortgage Calculator",icon = icon("calculator")),
+    menuItem(tabName = "PropertyComparison", "Property Location Comparison",icon = icon("scale-balanced")),
+    menuItem(tabName = "About","About",icon = icon("question"))
   )
 )
 
@@ -187,7 +336,8 @@ body <- dashboardBody(
         tabItem(tabName="InteractiveMap", interactive_map),
         tabItem(tabName="Trends", trends),
         tabItem(tabName="DataExplorer", data_explorer),
-        tabItem(tabName="MortgageCalculator", mortgage_calculator)
+        tabItem(tabName="MortgageCalculator", mortgage_calculator),
+        tabItem(tabName="PropertyComparison", propertyComparison())
     )
 )
 
